@@ -25,7 +25,6 @@ public class S3CrudFacade {
      * Upload file into s3 bucket
      * @param s3ObjectModel to mapping by Java object
      * @param toUploading File to uploading
-     * @return Whether be deleted uploaded data
      */
     static public void uploadFile(S3ObjectModel s3ObjectModel, File toUploading) {
         System.out.println("[S3 CrudFacade] Uploading:" + toUploading.getName());

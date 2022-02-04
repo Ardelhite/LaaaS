@@ -73,9 +73,8 @@ public interface IGenericDynamoDbTable {
      * Generate external relation info
      * @return external relation info of this table
      * @throws IllegalAccessException Throws when can not create new child instance by newInstance to execute this recursively
-     * @throws InvalidParametersInDynamoDbException
+     * @throws InvalidParametersInDynamoDbException Invalid type are set in Table model
      * @throws InstantiationException Throws when can not create new child instance by newInstance to execute this recursively
-     * @throws ExistsCircularReferenceException Throws when this method found circular reference
      */
     default List<ExternalRelationDetails> getExternalRelationDetails()
             throws IllegalAccessException, InvalidParametersInDynamoDbException, InstantiationException {
@@ -202,7 +201,12 @@ public interface IGenericDynamoDbTable {
     /**
      * Convert table to Item to writing into DynamoDB table
      * @return Items for this model and external child tables
-     * Map<TableName, record as Item to insert>
+     * Map ( TableName, record as Item to insert )
+     *
+     * @throws InvalidParametersInDynamoDbException Throws when table model has not annotated by DynamoDBTable
+     * @throws IllegalAccessException Throws when can not be get field value
+     * @throws InstantiationException Throws when can not create new table instance to inserting result
+     * @throws DoesNotExistsFunctionException Could not find the corresponding function to specific column type
      */
     default AbstractMap.SimpleEntry<String, Item> toItem()
             throws InvalidParametersInDynamoDbException, IllegalAccessException,
@@ -212,8 +216,8 @@ public interface IGenericDynamoDbTable {
         Item record = new Item();
 
         // Convert field to Item to inserting into DynamoDB table
-        // T: AbstractMap.SimpleEntry<Field name, Value>
-        // R: HashMap<Field name, Item>
+        // T: AbstractMap.SimpleEntry(Field name, Value)
+        // R: HashMap(Field name, Item)
         List<FlattenFunctionPoint<AbstractMap.SimpleEntry<String, Object>, HashMap<String, Item>>> functions = new ArrayList<>();
         // String
         functions.add(new FlattenFunctionPoint<>(
@@ -373,7 +377,7 @@ public interface IGenericDynamoDbTable {
 
     /**
      * For writing record into table
-     * Convert & Export model for embedded data structure as Map
+     * Convert and Export model for embedded data structure as Map
      * @return Map for embedded record
      * @throws IllegalAccessException Throws when can not be get field value
      * @throws DoesNotExistsFunctionException Throws at could not find function that is related by field type
@@ -383,8 +387,8 @@ public interface IGenericDynamoDbTable {
             IllegalAccessException, DoesNotExistsFunctionException, IllegalArgumentException {
 
         // Functions for converting
-        // AbstractMap.SimpleEntry<Field name, Field value>
-        // HashMap <Field name, Converted Field value>
+        // AbstractMap.SimpleEntry(Field name, Field value)
+        // HashMap (Field name, Converted Field value)
         List<FlattenFunctionPoint<AbstractMap.SimpleEntry<String, Object>, HashMap<String, Object>>> functions = new ArrayList<>();
         // String
         functions.add(new FlattenFunctionPoint<>(
@@ -520,7 +524,7 @@ public interface IGenericDynamoDbTable {
         IGenericDynamoDbTable resultOfTable = this.getClass().newInstance();
 
         // Functions for converting
-        // AbstractMap.SimpleEntry<Field name, HashMap<Result of query>>
+        // AbstractMap.SimpleEntry(Field name, HashMap(Result of query))
         // Object: Converted value
         List<FlattenFunctionPoint<AbstractMap.SimpleEntry<String, Map<String, AttributeValue>>, Object>> functions = new ArrayList<>();
 
@@ -678,6 +682,8 @@ public interface IGenericDynamoDbTable {
      * Create table definition data class
      * @return definition of table
      * @throws InvalidParametersInDynamoDbException Throws when table model has not annotated by DynamoDBTable
+     * @throws IllegalAccessException Throws when can not create new table instance to inserting result
+     * @throws InstantiationException Throws when can not create new table instance to inserting result
      */
     default TableDefinition toTableDefinition()
             throws InvalidParametersInDynamoDbException, IllegalAccessException, InstantiationException {

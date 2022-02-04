@@ -27,7 +27,10 @@ public class DynamoCreateTableRequest {
     /**
      * PartitionKey is set in constructor
      * (KeyType is HASH only)
+     * @param tableName table name
      * @param partitionKeyName Partition key name (Primary key)
+     * @param partitionKeyFieldType Type of Partition key
+     * @throws InvalidParametersInDynamoDbException throws when invalid parameters are contained to creating table
      */
     public DynamoCreateTableRequest(String tableName,
                                     String partitionKeyName, ScalarAttributeType partitionKeyFieldType

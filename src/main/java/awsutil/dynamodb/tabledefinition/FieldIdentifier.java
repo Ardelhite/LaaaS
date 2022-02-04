@@ -194,7 +194,7 @@ public class FieldIdentifier<T, R> {
 
     /**
      * Return function that put in same coordinates
-     * @return Function<T,R>
+     * @return Function(T,R)
      * @throws DoesNotExistsFunctionException No functions are existed on defined coordinates
      */
     public FlattenFunctionPoint<T, R> getFunction() throws DoesNotExistsFunctionException {

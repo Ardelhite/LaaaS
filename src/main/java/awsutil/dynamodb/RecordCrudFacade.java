@@ -188,6 +188,16 @@ public class RecordCrudFacade {
      * @throws IllegalAccessException Throws: TableDefinition, Creating new instance to inserting result
      * @throws InstantiationException Throws when failed create new instance to inserting result
      */
+
+    /**
+     *
+     * @param dataCondition search condition as same data model
+     * @return All result entities as data model
+     * @throws InvalidParametersInDynamoDbException Throws when data model is not annotated by DynamoDBTable
+     * @throws IllegalAccessException Throws: TableDefinition, Creating new instance to inserting result
+     * @throws InstantiationException Throws when failed create new instance to inserting result
+     * @throws DoesNotExistsFunctionException Throws when failed create new instance to inserting result
+     */
     public static List<IGenericDynamoDbTable> queryByGlobalSecondlyIndex(IGenericDynamoDbTable dataCondition)
             throws InvalidParametersInDynamoDbException, IllegalAccessException, InstantiationException, DoesNotExistsFunctionException {
         System.out.print("[LAAAS/DDB(Query by GSI)] <-------------------------------------------------->\n");

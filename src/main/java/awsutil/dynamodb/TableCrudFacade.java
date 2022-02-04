@@ -20,7 +20,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * C&D functions for DynamoDB
+ * Create and Delete functions for DynamoDB
  * On create table: Create only field that be regarding PartitionKey, SortKey and LSI.
  * Other field are added at inserting data
  */
@@ -31,11 +31,14 @@ public class TableCrudFacade {
 
     /**
      * Create DynamoDB table into AWS
+     * @param tableModel table model to creating table
+     * @return Created table info
      * @throws InvalidParametersInDynamoDbException throws when invalid parameters are contained to creating table
      * @throws InvalidDynamoFieldTypeException Other String or Integer has be contained in data model
      * @throws DuplicatedSortKeyException throws when invalid sort key is set
      * @throws InterruptedException throws by waiting for active DynamoDB table
-     * @return Created table info
+     * @throws InstantiationException Throws when could not creating new instance from table model
+     * @throws IllegalAccessException Throws when could not access to data field in table model class
      */
     public static Table create(Class<? extends IGenericDynamoDbTable> tableModel)
             throws InvalidParametersInDynamoDbException, InvalidDynamoFieldTypeException,
@@ -224,8 +227,13 @@ public class TableCrudFacade {
     }
 
     /**
-     * Delete dynamoDB table
-     * @return DeleteTableResult
+     * Drop table in AWS DynamoDB
+     * @param table Table object to deleting table
+     * @return result of deleting table
+     * @throws InstantiationException Throws when could not creating new instance from table model
+     * @throws IllegalAccessException Throws when could not access to data field in table model class
+     * @throws InvalidParametersInDynamoDbException throws when invalid parameters are contained to creating table
+     * @throws InterruptedException throws by waiting for active DynamoDB table
      */
     public static DeleteTableResult drop(Table table)
             throws InstantiationException, IllegalAccessException, InvalidParametersInDynamoDbException,
