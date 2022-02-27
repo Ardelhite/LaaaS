@@ -6,6 +6,7 @@ import awsutil.dynamodb.tabledefinition.TableDefinition;
 import awsutil.dynamodb.tabledefinition.TableRelation;
 import com.amazonaws.services.dynamodbv2.document.Table;
 
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
 import org.junit.Test;
 import samples.*;

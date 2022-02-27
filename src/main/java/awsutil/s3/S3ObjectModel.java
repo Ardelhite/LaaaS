@@ -1,6 +1,8 @@
 package awsutil.s3;
 
+import com.amazonaws.regions.Regions;
 import lombok.Data;
+import utils.GeneralIO;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,25 +15,26 @@ import java.nio.file.Paths;
  */
 @Data
 public class S3ObjectModel {
-    static final private String TEMPORARY_DIRECTORY_NAME = "s3TemporaryToConverting";
-    static final private String TEMPORARY_DIRECTORY_PATH = "/tmp/";
     private String bucketName = "";
     private String directoryPath = "";
     private String objectName = "";
+    private Regions regions = Regions.DEFAULT_REGION;
 
     /**
      * [Constructor] Object definitions
      * @param bucketName bucket name
      * @param directoryPath directory path in S3 bucket
      * @param objectName S3 object name
+     * @param regions Using region (e.g. Regions.AP_NORTHEAST_1)
      * @throws IOException throws regarding I/O to internal temporary file
      */
-    public S3ObjectModel(String bucketName, String directoryPath, String objectName) throws IOException {
+    public S3ObjectModel(String bucketName, String directoryPath, String objectName, Regions regions) throws IOException {
         checkingWhetherTemporaryDirectoryExists();
 
         this.bucketName = bucketName;
-        this.directoryPath = directoryPath;
+        this.directoryPath = directoryPath.equals("/") ? "" : directoryPath;
         this.objectName = objectName;
+        this.regions = regions;
     }
 
     /**
@@ -70,7 +73,7 @@ public class S3ObjectModel {
      * @throws IOException throws regarding I/O to internal temporary file
      */
     public File getObject() throws IOException {
-        return S3CrudFacade.getObject(this);
+        return S3CrudFacade.getObject(this).toFile();
     }
 
     /**
@@ -82,14 +85,10 @@ public class S3ObjectModel {
         return S3CrudFacade.getBase64EncodedObject(this);
     }
 
-    public Path getS3temporaryDirectoryPath() {
-        return Paths.get(TEMPORARY_DIRECTORY_PATH + TEMPORARY_DIRECTORY_NAME);
-    }
-
     private void checkingWhetherTemporaryDirectoryExists() throws IOException {
         // Create temporary object
-        if(!Files.exists(getS3temporaryDirectoryPath())) {
-            Files.createDirectory(getS3temporaryDirectoryPath());
+        if(!Files.exists(GeneralIO.getDefaultTempDirPath())) {
+            Files.createDirectory(GeneralIO.getDefaultTempDirPath());
         }
     }
 }
