@@ -1,6 +1,7 @@
 package awsutil.ses;
 
 import awsutil.s3.S3ObjectModel;
+import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import lombok.Data;
 import utils.GeneralIO;
@@ -35,6 +36,20 @@ public class SendingMailRequest {
         this.recipient = recipient;
         this.subject = subject;
         this.regions = regions;
+    }
+
+    /**
+     * Set mandatory fields at constructor
+     * @param sender "From" address
+     * @param recipient "To" address
+     * @param subject Subject to sending mail
+     * @param regions Specify Using regions by String (e.g. "ap-northeast-1")
+     */
+    public SendingMailRequest(String sender, String recipient, String subject, String regions) {
+        this.sender = sender;
+        this.recipient = recipient;
+        this.subject = subject;
+        this.regions = Regions.fromName(regions);
     }
 
     private List<String> addressOfCc = new ArrayList<>();
