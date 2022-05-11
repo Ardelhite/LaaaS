@@ -14,6 +14,12 @@ import java.util.List;
  * Data class for information of annotation that set in data model class
  */
 public class TableDefinition {
+    /**
+     * For using same table in different environment of applications or systems
+     * If exists this env values in current system, All tables name change to name that has this value in head
+     */
+    static final String bundlerIdentifier = "LAAAS_DDB_BUNDLER_IDENTIFIER";
+
     public String tableName;
     // AbstractMap.SimpleEntry<Name of partition key, Be set value>
     public AbstractMap.SimpleEntry<String, Object> partitionKey;
@@ -44,7 +50,7 @@ public class TableDefinition {
      */
     private void initTableDefinition(Class<?> dataModel, IGenericDynamoDbTable instance)
             throws InvalidParametersInDynamoDbException, IllegalAccessException {
-        // Init parm by arguments
+        // Init param by arguments
         if(dataModel == null && instance != null) {
             this.modelClass = instance.getClass();
         } else {
@@ -53,7 +59,8 @@ public class TableDefinition {
 
         if(modelClass != null && modelClass.isAnnotationPresent(DynamoDBTable.class)) {
             // Basic parameters
-            this.tableName = this.modelClass.getAnnotation(DynamoDBTable.class).tableName();
+            String tableNameAsEntity = this.modelClass.getAnnotation(DynamoDBTable.class).tableName();
+            this.tableName = getBundlerIdentifier() != null ? getBundlerIdentifier() + tableNameAsEntity : tableNameAsEntity;
             this.readCapacityUnit = this.modelClass.getAnnotation(DynamoDBTable.class).readCapacityUnit();
             this.writeCapacityUnit = this.modelClass.getAnnotation(DynamoDBTable.class).writeCapacityUnit();
 
@@ -121,7 +128,7 @@ public class TableDefinition {
 
         // Checking whether is parameter set into pair
         boolean isCorrectPartKey = isExistsPartKey && isExistsPartValue;
-        boolean isCorrectSortKey = isExistsSortKey ? isExistsSortValue : true;
+        boolean isCorrectSortKey = !isExistsSortKey || isExistsSortValue;
 
         return isCorrectPartKey && isCorrectSortKey;
     }
@@ -146,5 +153,13 @@ public class TableDefinition {
     public TableDefinition(IGenericDynamoDbTable record) throws
             InvalidParametersInDynamoDbException, IllegalAccessException {
         initTableDefinition(null, record);
+    }
+
+    static private String getBundlerIdentifier() {
+        return System.getenv(bundlerIdentifier);
+    }
+
+    static private String getEnvNameOfBundlerIdentifier() {
+        return bundlerIdentifier;
     }
 }
