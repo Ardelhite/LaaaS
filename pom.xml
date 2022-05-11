@@ -6,7 +6,7 @@
 
     <groupId>io.github.ardelhite</groupId>
     <artifactId>laaas</artifactId>
-    <version>0.2.200</version>
+    <version>0.2.201</version>
     <packaging>jar</packaging>
 
     <name>LaaaS</name>
