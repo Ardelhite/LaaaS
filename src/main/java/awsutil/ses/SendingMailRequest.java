@@ -1,7 +1,6 @@
 package awsutil.ses;
 
 import awsutil.s3.S3ObjectModel;
-import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import lombok.Data;
 import utils.GeneralIO;
@@ -28,7 +27,7 @@ public class SendingMailRequest {
      * Set mandatory fields at constructor
      * @param sender "From" address
      * @param recipient "To" address
-     * @param subject Subject to sending mail
+     * @param subject Subject to sending mail　
      * @param regions Using regions that applied both of SES and S3 to be attached files (e.g. Regions.AP_NORTHEAST_1)
      */
     public SendingMailRequest(String sender, String recipient, String subject, Regions regions) {

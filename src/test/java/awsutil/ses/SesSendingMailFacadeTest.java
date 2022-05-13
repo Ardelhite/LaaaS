@@ -5,7 +5,6 @@ import awsutil.ses.testmodel.AttachmentFilesFromS3;
 import awsutil.ses.testmodel.SesTestCaseModel;
 import com.amazonaws.regions.Regions;
 import com.google.gson.Gson;
-import org.junit.Test;
 import utils.GeneralIO;
 
 import javax.mail.MessagingException;
