@@ -3,6 +3,7 @@ package awsutil.dynamodb;
 import awsutil.dynamodb.exceptions.DoesNotExistsFunctionException;
 import awsutil.dynamodb.exceptions.ExistsCircularReferenceException;
 import awsutil.dynamodb.exceptions.InvalidParametersInDynamoDbException;
+import awsutil.dynamodb.tabledefinition.DdbRecordCollection;
 import awsutil.dynamodb.tabledefinition.GlobalSecondlyIndexStructure;
 import awsutil.dynamodb.tabledefinition.IGenericDynamoDbTable;
 import awsutil.dynamodb.tabledefinition.TableDefinition;
@@ -12,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.*;
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec;
 import com.amazonaws.services.dynamodbv2.model.*;
+import com.google.gson.Gson;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,53 +50,54 @@ public class RecordCrudFacade {
         return null;
     }
 
-    /**
-     * Get items from DB
-     * @param dataCondition query conditions to searching parent table
-     * @return all result that contained relation tables
-     * @throws ExistsCircularReferenceException Throws when tables have circular reference between each tables
-     * @throws InstantiationException Throws when failed create new instance to inserting result
-     * @throws IllegalAccessException Throws: TableDefinition, Creating new instance to inserting result
-     * @throws InvalidParametersInDynamoDbException Throws when data model is not annotated by DynamoDBTable
-     * @throws DoesNotExistsFunctionException Throws when failed create new instance to inserting result
-     */
-    public static List<IGenericDynamoDbTable> query(IGenericDynamoDbTable dataCondition)
-            throws ExistsCircularReferenceException, InstantiationException, IllegalAccessException,
-            InvalidParametersInDynamoDbException, DoesNotExistsFunctionException {
-        System.out.println("[LAAAS/DDB(QUERY)] \\/====================================================================\\/");
-        // Checking whether table has not circular reference
-        dataCondition.toRelationTree(null, 0, null);
+    public static List<IGenericDynamoDbTable> queryRecords(IGenericDynamoDbTable conditionOfRecord)
+            throws InvalidParametersInDynamoDbException, DoesNotExistsFunctionException,
+            InstantiationException, IllegalAccessException, ExistsCircularReferenceException {
+        // Checking whether table has not circular reference from given query
+        conditionOfRecord.toRelationTree(null, 0, null);
 
-        // Result of query
-        List<IGenericDynamoDbTable> allResults = new ArrayList<>();
+        // Get all record as relational root that can be got by given query
+        DdbRecordCollection resultOfQuery = new DdbRecordCollection() {{
+            // By Table key
+            add(RecordCrudFacade.queryByTableKeys(conditionOfRecord));
+            // By GSI
+            addAll(RecordCrudFacade.queryByGlobalSecondlyIndex(conditionOfRecord));
+        }};
 
-        // Get item for current table
-        IGenericDynamoDbTable resultOfParent = RecordCrudFacade.queryByTableKeys(dataCondition);
-        if(resultOfParent != null) {
-            allResults.add(resultOfParent);
+        // Checking relation by parent
 
-            for(IGenericDynamoDbTable query: resultOfParent.issueNewQueryToRelation()) {
-                // Search by table keys
-                try {
-                    IGenericDynamoDbTable resultByTableKey = RecordCrudFacade.queryByTableKeys(query);
-                    if(resultByTableKey != null) allResults.add(resultByTableKey);
-                } catch (AmazonDynamoDBException e) {
-                    // Ignore exception regarding query
-                    e.printStackTrace();
-                }
+//        DdbRecordCollection children = new DdbRecordCollection();
+//        for (IGenericDynamoDbTable parent: resultOfQuery) {
+//            for (IGenericDynamoDbTable searchConditionsForChild: parent.issueNewQueryToRelation()) {
+//                // Get records from related table
+//                try {
+//                    children.add(queryByTableKeys(searchConditionsForChild));
+//                } catch (AmazonDynamoDBException e) {
+//                    // Ignore exception regarding query
+//                    e.printStackTrace();
+//                }
+//
+//                // Search by GSI
+//                try {
+//                    children.addAll(RecordCrudFacade.queryByGlobalSecondlyIndex(searchConditionsForChild));
+//                } catch (AmazonDynamoDBException e) {
+//                    // Ignore exception regarding query
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
 
-                // Search by GSI
-                try {
-                    List<IGenericDynamoDbTable> resultByGlobalSi = new ArrayList<>(RecordCrudFacade.queryByGlobalSecondlyIndex(query));
-                    if(!resultByGlobalSi.isEmpty()) allResults.addAll(resultByGlobalSi);
-                } catch (AmazonDynamoDBException e) {
-                    // Ignore exception regarding query
-                    e.printStackTrace();
-                }
+        // Checking relation by got children
+        DdbRecordCollection children = new DdbRecordCollection();
+        for (IGenericDynamoDbTable parent: resultOfQuery) {
+            for (IGenericDynamoDbTable query: parent.issueNewQueryToRelation()) {
+                children.addAll(queryRecords(query));
             }
         }
+        resultOfQuery.addAll(children);
+
         System.out.println("[LAAAS/DDB(QUERY)] /\\=====================================================================/\\");
-        return allResults;
+        return resultOfQuery;
     }
 
     /**
@@ -114,6 +117,7 @@ public class RecordCrudFacade {
         System.out.println("[LAAAS/DDB(Query by TableKey)] START QUERY BY TABLE KEYS: " + dataCondition.getTableName());
 
         TableDefinition def = dataCondition.toTableDefinition();
+
         if(def.isSetTableKeys()) {
             try {
                 GetItemRequest request = new GetItemRequest()
@@ -138,12 +142,12 @@ public class RecordCrudFacade {
     }
 
     /**
-     *
-     * @param condition
-     * @return
-     * @throws InvalidParametersInDynamoDbException
-     * @throws IllegalAccessException
-     * @throws InstantiationException
+     * Convert query conditions to attribute to search DDB
+     * @param condition as model as instance of table model
+     * @return conditions for DDB API
+     * @throws InvalidParametersInDynamoDbException Throws when data model is not annotated by DynamoDBTable
+     * @throws IllegalAccessException Throws: TableDefinition, Creating new instance to inserting result
+     * @throws InstantiationException Throws when failed create new instance to inserting result
      */
     private static HashMap<String, AttributeValue> getTableKeysForCondition(IGenericDynamoDbTable condition)
             throws InvalidParametersInDynamoDbException, IllegalAccessException, InstantiationException {
@@ -165,32 +169,7 @@ public class RecordCrudFacade {
     }
 
     /**
-     *
-     * @param dataCondition
-     * @param keysAsCondition
-     * @return
-     * @throws InvalidParametersInDynamoDbException
-     * @throws IllegalAccessException
-     * @throws InstantiationException
-     */
-    private static Get issueGetCursor(IGenericDynamoDbTable dataCondition, HashMap<String, AttributeValue> keysAsCondition)
-            throws InvalidParametersInDynamoDbException, IllegalAccessException, InstantiationException {
-            return new Get()
-                    .withKey(keysAsCondition)
-                    .withTableName(dataCondition.toTableDefinition().tableName);
-    }
-
-    /**
      * Query by Global secondly index
-     * @param dataCondition search condition as same data model
-     * @return All result entities as data model
-     * @throws InvalidParametersInDynamoDbException Throws when data model is not annotated by DynamoDBTable
-     * @throws IllegalAccessException Throws: TableDefinition, Creating new instance to inserting result
-     * @throws InstantiationException Throws when failed create new instance to inserting result
-     */
-
-    /**
-     *
      * @param dataCondition search condition as same data model
      * @return All result entities as data model
      * @throws InvalidParametersInDynamoDbException Throws when data model is not annotated by DynamoDBTable
@@ -215,6 +194,15 @@ public class RecordCrudFacade {
         // Converted entities to returning
         List<IGenericDynamoDbTable> resultEntities = new ArrayList<>();
 
+        // Skip query when no there condition for HASH key
+        for (TableDefinition.GsiValueStructure gsiValueStructure: gsiValues) {
+            if (gsiValueStructure.keyType == KeyType.HASH && gsiValueStructure.value == null) {
+                System.out.print("[LAAAS/DDB(Query by GSI)]: SKIP QUERY BY GSI: " +
+                        new Gson().toJson(gsiValueStructure));
+                return resultEntities;
+            }
+        }
+
         if(table != null && gsiStructures != null && !gsiStructures.isEmpty()) {
             // Get value by GSI
             for(String indexName: gsiStructures.keySet()) {
@@ -237,36 +225,36 @@ public class RecordCrudFacade {
                     System.out.print("[LAAAS/DDB(Query by GSI)]: For SORT KEY: " + sortValue + "\n");
 
                     QuerySpec querySpec = new QuerySpec();
-                    if(!hashValue.isEmpty() && hashValue.get(0).value != null) {
-                        // Request query if be set condition in current GSI
-                        if(gsiKey.isOnlyHashKey() || gsiKey.hasSortKey()) {
-                            // Set condition for HASH key
-                            querySpec.withHashKey(new KeyAttribute(
-                                    hashValue.get(0).fieldName, hashValue.get(0).value)
-                            );
-                            System.out.print("[LAAAS/DDB(Query by GSI)]: Set HASH KEY: " +
-                                    hashValue.get(0).value + " INTO " + hashValue.get(0).fieldName + "\n");
-                        }
-                        if(gsiKey.hasSortKey() && !sortValue.isEmpty() && sortValue.get(0).value != null) {
-                            // Set condition for Sort key
-                            querySpec.withRangeKeyCondition(new RangeKeyCondition(sortValue.get(0).fieldName)
-                                            .eq(sortValue.get(0).value)
-                            );
-                            System.out.print("[LAAAS/DDB(Query by GSI)]: Set SORT: " +
-                                    sortValue.get(0).value + " INTO " + sortValue.get(0).fieldName + "\n");
-                        }
+                    // Set condition for HASH key
+                    if (!hashValue.isEmpty() && hashValue.get(0).value != null) {
+                        // Set condition for HASH key
+                        querySpec.withHashKey(new KeyAttribute(
+                                hashValue.get(0).fieldName, hashValue.get(0).value)
+                        );
+                        System.out.print("[LAAAS/DDB(Query by GSI)]: Set HASH KEY: " +
+                                hashValue.get(0).value + " INTO " + hashValue.get(0).fieldName + "\n");
+                    }
 
-                        // Convert result to data model
-                        try {
-                            for(Page<Item, QueryOutcome> page: index.query(querySpec).pages()) {
-                                for(Map<String, AttributeValue> item: page.getLowLevelResult().getQueryResult().getItems()) {
-                                    resultEntities.add(dataCondition.getClass().newInstance().insertResultIntoModel(item));
-                                    System.out.print("[LAAAS/DDB(Query by GSI)]: ROW RESULT: " + item + "\n");
-                                }
+                    // Set condition for Sort key
+                    // TODO: Making this function can query by sort key only
+                    if(gsiKey.hasSortKey() && gsiKey.hasSortKey() && !sortValue.isEmpty() && sortValue.get(0).value != null) {
+                        querySpec.withRangeKeyCondition(new RangeKeyCondition(sortValue.get(0).fieldName)
+                                .eq(sortValue.get(0).value)
+                        );
+                        System.out.print("[LAAAS/DDB(Query by GSI)]: Set SORT: " +
+                                sortValue.get(0).value + " INTO " + sortValue.get(0).fieldName + "\n");
+                    }
+
+                    // Convert result to data model
+                    try {
+                        for(Page<Item, QueryOutcome> page: index.query(querySpec).pages()) {
+                            for(Map<String, AttributeValue> item: page.getLowLevelResult().getQueryResult().getItems()) {
+                                resultEntities.add(dataCondition.getClass().newInstance().insertResultIntoModel(item));
+                                System.out.print("[LAAAS/DDB(Query by GSI)]: ROW RESULT: " + item + "\n");
                             }
-                        } catch (AmazonDynamoDBException e) {
-                            e.printStackTrace();
                         }
+                    } catch (AmazonDynamoDBException e) {
+                        e.printStackTrace();
                     }
                 }
             }

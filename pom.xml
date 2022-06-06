@@ -6,7 +6,7 @@
 
     <groupId>io.github.ardelhite</groupId>
     <artifactId>laaas</artifactId>
-    <version>0.2.201</version>
+    <version>0.2.202</version>
     <packaging>jar</packaging>
 
     <name>LaaaS</name>
@@ -99,9 +99,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>5.8.2</version>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

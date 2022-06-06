@@ -20,6 +20,6 @@ public class SampleRelationalTable implements IGenericDynamoDbTable {
     @ExternalRelation(
             indexName = "relation-index-name",
             relationTo = SampleRelationalChild.class,
-            relationKeyType = ERelationKeyType.PARTITION_KEY)
+            relationKeyType = ERelationKeyType.GLOBAL_SECONDLY_INDEX)
     public String externalRelationTable = "";
 }

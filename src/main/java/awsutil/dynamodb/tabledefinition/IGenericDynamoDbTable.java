@@ -446,7 +446,7 @@ public interface IGenericDynamoDbTable {
                     return null;
                 }
         ));
-        // List (Strong & Integer & Boolean)
+        // List (String & Integer & Boolean)
         functions.add(new FlattenFunctionPoint<>(
                 // Coordinate
                 new ArrayList<AbstractMap.SimpleEntry<Integer, Integer>>() {{
@@ -502,9 +502,11 @@ public interface IGenericDynamoDbTable {
             // Get function to converting
             FlattenFunctionPoint<AbstractMap.SimpleEntry<String, Object>, HashMap<String, Object>> execFunc = identifier.getFunction();
             // Exec function and get map
-            mappedInstanceField.putAll(execFunc.biMappedFunction.apply(
-                    new AbstractMap.SimpleEntry<String, Object>(field.getName(), field.get(this))
-            ));
+            Map<String, Object> filedNameAndObject = execFunc.biMappedFunction.apply(
+                    new AbstractMap.SimpleEntry<String, Object>(field.getName(), field.get(this)));
+            if (filedNameAndObject != null) {
+                mappedInstanceField.putAll(filedNameAndObject);
+            }
         }
         return mappedInstanceField;
     }
@@ -700,5 +702,47 @@ public interface IGenericDynamoDbTable {
     default String getTableName()
             throws InvalidParametersInDynamoDbException, IllegalAccessException, InstantiationException {
         return this.toTableDefinition().tableName;
+    }
+
+    /**
+     * Eval the same instances are same
+     * @param record (or search conditions as instance)
+     * @return whether to having same values between this and given instance
+     */
+    default Boolean isEqualsRecord(IGenericDynamoDbTable record) {
+        if (record != null && this.getClass().equals(record.getClass())) {
+            // Pair of filed name and value
+            HashMap<String, Object> fNameAndValues = new HashMap<>();
+            try {
+                // Set filed name and value from this
+                for (Field field: this.getClass().getDeclaredFields()) {
+                    fNameAndValues.put( field.getName(), field.get(this));
+                }
+                // Eval values by given instance
+                for (Field field: record.getClass().getDeclaredFields()) {
+                    if (! fNameAndValues.get(field.getName()).equals(field.get(record))) return false;
+                }
+                // This and given instances are same class and having same values
+                return true;
+            } catch (IllegalAccessException e) {
+                // Throws when model has private field
+                throw new RuntimeException(e);
+            }
+        } else {
+            // this instance and arg are different table model
+            return false;
+        }
+    }
+
+    /**
+     * Checking whether to existing this instances in given list
+     * @param records list of records
+     * @return is exists
+     */
+    default boolean isExistsInList(List<IGenericDynamoDbTable> records) {
+        for (IGenericDynamoDbTable record: records) {
+            if (record.isEqualsRecord(this)) return true;
+        }
+        return false;
     }
 }
