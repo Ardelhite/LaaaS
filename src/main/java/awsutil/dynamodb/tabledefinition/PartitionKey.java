@@ -8,4 +8,7 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface PartitionKey { }
+public @interface PartitionKey {
+    public boolean isAutoGen() default false;
+    public int range() default 32;
+}

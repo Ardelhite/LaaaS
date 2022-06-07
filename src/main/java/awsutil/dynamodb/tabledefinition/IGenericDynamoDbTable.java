@@ -1,10 +1,13 @@
 package awsutil.dynamodb.tabledefinition;
 
+import awsutil.dynamodb.RecordCrudFacade;
 import awsutil.dynamodb.exceptions.DoesNotExistsFunctionException;
 import awsutil.dynamodb.exceptions.ExistsCircularReferenceException;
+import awsutil.dynamodb.exceptions.InvalidDynamoFieldTypeException;
 import awsutil.dynamodb.exceptions.InvalidParametersInDynamoDbException;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import utils.Randomizer;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -744,5 +747,67 @@ public interface IGenericDynamoDbTable {
             if (record.isEqualsRecord(this)) return true;
         }
         return false;
+    }
+
+    /**
+     * Set random value that does not exist in table into field that annotated PartitionKey with isAutoGen is true
+     * @return Updated record
+     * @throws InvalidDynamoFieldTypeException isAutoGen has be set as true in other than String or Integer
+     * @throws DoesNotExistsFunctionException from facade
+     * @throws ExistsCircularReferenceException from facade
+     * @throws IllegalAccessException DAO model have private field
+     * @throws InstantiationException from facade
+     * @throws InvalidParametersInDynamoDbException from facade
+     */
+    default IGenericDynamoDbTable setRandomValueByAutoGen() throws InvalidDynamoFieldTypeException, DoesNotExistsFunctionException,
+            ExistsCircularReferenceException, IllegalAccessException, InstantiationException, InvalidParametersInDynamoDbException {
+        if (Arrays.stream(this.getClass().getDeclaredFields()).anyMatch(field ->
+                field.isAnnotationPresent(PartitionKey.class)
+                        && field.getAnnotation(PartitionKey.class).isAutoGen()))
+        {
+            // Set random value to annotated filed
+            IGenericDynamoDbTable tempQuery = generateRandomValueByAutoGen();
+            IGenericDynamoDbTable result = RecordCrudFacade.queryByTableKeys(tempQuery);
+            while (result != null) {
+                tempQuery = generateRandomValueByAutoGen();
+                result = RecordCrudFacade.queryByTableKeys(tempQuery);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Set random value into field that annotated PartitionKey with isAutoGen is true
+     * @return Updated record with partition key with random value
+     * @throws InvalidDynamoFieldTypeException isAutoGen has be set as true in other than String or Integer
+     * @throws IllegalAccessException DAO model have private field
+     */
+    default IGenericDynamoDbTable generateRandomValueByAutoGen() throws InvalidDynamoFieldTypeException, IllegalAccessException
+    {
+        // Get field
+        List<Field> fields = Arrays.stream(this.getClass().getDeclaredFields()).filter(
+                field -> field.isAnnotationPresent(PartitionKey.class) && field.getDeclaredAnnotation(PartitionKey.class).isAutoGen()
+        ).collect(Collectors.toList());
+
+        // Checking field type
+        List<Field> wrongTypes = fields.stream().filter(
+                field -> !field.getType().equals(String.class) && !field.getType().equals(Integer.class)
+        ).collect(Collectors.toList());
+        if (wrongTypes.isEmpty()) {
+            for (Field field: fields) {
+                // Set values into field automatically
+                if (field.getType().equals(String.class)) {
+                    // String
+                    field.set(this, Randomizer.generateRandomString(field.getAnnotation(PartitionKey.class).range()));
+                } else {
+                    // Integer
+                    field.set(this, new Random().nextInt(field.getAnnotation(PartitionKey.class).range()));
+                }
+            }
+            return this;
+        } else {
+            throw new InvalidDynamoFieldTypeException(this.getClass(), wrongTypes.get(0),
+                    "AutoGen allowed String and Integer with partition key");
+        }
     }
 }

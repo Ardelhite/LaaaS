@@ -418,4 +418,20 @@ public class DynamoDbTableTest {
 
         TableCrudFacade.drop(table);
     }
+
+    @Test
+    public void testingAutoGen() throws InvalidDynamoFieldTypeException, DuplicatedSortKeyException, InvalidParametersInDynamoDbException, InterruptedException, InstantiationException, IllegalAccessException, DoesNotExistsFunctionException, ExistsCircularReferenceException {
+        Table table = TableCrudFacade.create(AutoGenTestTable.class);
+        List<AutoGenTestTable> records = new ArrayList<AutoGenTestTable>() {{
+            add(new AutoGenTestTable("0", "0"));
+            add(new AutoGenTestTable("0", "0"));
+        }};
+        for (AutoGenTestTable record: records) {
+            RecordCrudFacade.insertSingleRecord(record);
+        }
+        List<IGenericDynamoDbTable> res = RecordCrudFacade.queryRecords(new AutoGenTestTable(null, "0"));
+        assertEquals(2, res.size());
+        System.out.println(res.stream().map(r -> new Gson().toJson(r)).collect(Collectors.toList()));
+        TableCrudFacade.drop(table);
+    }
 }

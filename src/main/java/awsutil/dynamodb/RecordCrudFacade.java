@@ -2,6 +2,7 @@ package awsutil.dynamodb;
 
 import awsutil.dynamodb.exceptions.DoesNotExistsFunctionException;
 import awsutil.dynamodb.exceptions.ExistsCircularReferenceException;
+import awsutil.dynamodb.exceptions.InvalidDynamoFieldTypeException;
 import awsutil.dynamodb.exceptions.InvalidParametersInDynamoDbException;
 import awsutil.dynamodb.tabledefinition.DdbRecordCollection;
 import awsutil.dynamodb.tabledefinition.GlobalSecondlyIndexStructure;
@@ -43,7 +44,11 @@ public class RecordCrudFacade {
         Table table = dynamoDB.getTable(def.tableName);
 
         if(table != null) {
-            table.putItem(record.toItem().getValue());
+            try {
+                table.putItem(record.setRandomValueByAutoGen().toItem().getValue());
+            } catch (InvalidDynamoFieldTypeException | ExistsCircularReferenceException e) {
+                throw new RuntimeException(e);
+            }
             // Confirming whether is success inserting
             return RecordCrudFacade.queryByTableKeys(record);
         }
@@ -63,29 +68,6 @@ public class RecordCrudFacade {
             // By GSI
             addAll(RecordCrudFacade.queryByGlobalSecondlyIndex(conditionOfRecord));
         }};
-
-        // Checking relation by parent
-
-//        DdbRecordCollection children = new DdbRecordCollection();
-//        for (IGenericDynamoDbTable parent: resultOfQuery) {
-//            for (IGenericDynamoDbTable searchConditionsForChild: parent.issueNewQueryToRelation()) {
-//                // Get records from related table
-//                try {
-//                    children.add(queryByTableKeys(searchConditionsForChild));
-//                } catch (AmazonDynamoDBException e) {
-//                    // Ignore exception regarding query
-//                    e.printStackTrace();
-//                }
-//
-//                // Search by GSI
-//                try {
-//                    children.addAll(RecordCrudFacade.queryByGlobalSecondlyIndex(searchConditionsForChild));
-//                } catch (AmazonDynamoDBException e) {
-//                    // Ignore exception regarding query
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
 
         // Checking relation by got children
         DdbRecordCollection children = new DdbRecordCollection();
